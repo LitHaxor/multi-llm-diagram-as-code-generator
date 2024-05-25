@@ -1,6 +1,10 @@
 from anthropic import Anthropic
 from celery import Celery
-from ..config import CLAUDE_API_KEY
+from dotenv import load_dotenv
+load_dotenv()
+import os
+
+CLAUDE_API_KEY = os.getenv('CLAUDE_API_KEY')
 
 if CLAUDE_API_KEY is None:
     raise ValueError("CLAUDE_API_KEY is not set")
@@ -41,4 +45,7 @@ def get_claude_response(prompt: str):
     except Exception as e:
         print(f"[error] claude_workers.py: get_claude_response: {str(e)}")
         return f'{type(e).__name__}: {e}'
+
+
+
 

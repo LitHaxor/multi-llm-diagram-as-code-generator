@@ -81,11 +81,17 @@ uvicorn main:app --reload
 ### Claude worker
 
 ```
-celery -A workers.claude_worker worker --loglevel=info
+celery -A workers.claude_workers worker --loglevel=info
 ```
 
 ### Gemini worker
 
 ```
-celery -A workers.gemini_worker worker --loglevel=info
+celery -A workers.gemini_workers worker --loglevel=info
+```
+
+### OpenAI worker
+
+```
+celery -A workers.openai_workers worker --loglevel=info
 ```

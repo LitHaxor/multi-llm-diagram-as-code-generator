@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+load_dotenv()
 import asyncio
 import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -5,17 +7,23 @@ from fastapi.responses import HTMLResponse
 from connection_manager import ConnectionManager
 from workers.claude_workers import get_claude_response
 from workers.gemini_workers import get_prompt_response
+from workers.openai_workers import get_openai_response
 from utils.common import create_system_prompt, santise_markdown_text
+
 
 models = {
     "gemini": {
         "function": get_prompt_response,
         "name": 'gemini'
     },
-    "claude": {
-        "function": get_claude_response,
-        "name": 'claude'
-    }
+    # "claude": {
+    #     "function": get_claude_response,
+    #     "name": 'claude'
+    # },
+    # 'openai': {
+    #     'function': get_openai_response,
+    #     'name': 'openai'
+    # }
 }
 
 app = FastAPI()
@@ -26,6 +34,10 @@ manager = ConnectionManager()
 async def root():
     with open("index.html") as f:
         return HTMLResponse(content=f.read(), media_type="text/html")
+    
+# @app.post("/send")
+# async def send_message(message: str):
+#     return get_openai_response(message)
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -42,7 +54,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
             for model in models:
                 try:
-                    task = models[model]["function"].delay(text)
+                    task = models[model]["function"].delay(text, websocket, manager)
 
                     while not task.ready():
                         await asyncio.sleep(1)
@@ -53,7 +65,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         "user": models[model]["name"],
                     }
 
-                    await manager.send_message(json.dumps(message), websocket)
+                    manager.send_message(json.dumps(message), websocket)
                 except Exception as e:
                     print(f"Error: {str(e)}")
         
