@@ -85,6 +85,7 @@
 
     <script type="module">
       import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+
       mermaid.initialize({ startOnLoad: true });
 
       const clientId = generateClientId(); // Generate or retrieve the client ID
@@ -101,6 +102,9 @@
         const data = JSON.parse(event.data);
         const userName = data.user;
         const message = data.text;
+        const original_prompt = data.original_prompt;
+        const uml_type = data.uml_type;
+        const model_name = userName;
 
         const parentDiv = document.createElement("div");
         parentDiv.classList.add(
@@ -150,7 +154,7 @@
           star.addEventListener("click", () => {
             const rating = parseInt(star.dataset.rating);
             highlightStars(starRatingDiv, rating);
-            sendRating(userName, message, rating);
+            sendRating(userName, message, rating, model_name, uml_type, original_prompt);
           });
 
           starRatingDiv.appendChild(star);
@@ -183,17 +187,27 @@
       }
 
       // Function to send rating via POST request
-      function sendRating(user, message, rating) {
-        fetch("/rating", {
-          method: "POST",
+      function sendRating(user, message, rating, model_name, uml_type, original_prompt) {
+        fetch('/api/rating', {
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ user, message, rating }),
-        })
-          .then((response) => response.json())
-          .then((data) => console.log("Rating submitted:", data))
-          .catch((error) => console.error("Error submitting rating:", error));
+          body: JSON.stringify({
+            model_name,
+            text_data: message, 
+            rating: rating,
+            client_id: clientId,
+            uml_type,
+            original_prompt,
+          })
+        }).then((response) => {
+          if (response.ok) {
+            console.log('Rating sent successfully');
+          } else {
+            console.error('Failed to send rating');
+          }
+        });
       }
 
       function sendMessage() {

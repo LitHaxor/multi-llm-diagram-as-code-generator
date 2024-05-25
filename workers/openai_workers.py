@@ -27,7 +27,7 @@ openai_worker = Celery(
 pubsub = RedisPubSubManager()
 
 @openai_worker.task
-def get_openai_response(prompt: str, client_id:str):
+def get_openai_response(prompt: str, client_id:str, uml_type:str, original_prompt:str):
     try:
         completion = openai.chat.completions.create(
             model='gpt-3.5-turbo',
@@ -36,13 +36,16 @@ def get_openai_response(prompt: str, client_id:str):
             ]
         )
         response = completion.to_dict()
+        print(response)
         text = response['choices'][0]['message']['content']
 
         pubsub.publish(client_id, json.dumps({
             "text": santise_markdown_text(text),
-            "user": "openai"
+            "user": "gpt-3.5",
+            "uml_type": uml_type,
+            "original_prompt": original_prompt,
         }))
-        
+
         return text
     except Exception as e:
         return str(e)

@@ -10,3 +10,4 @@ redis
 anthropic
 python-dotenv
 openai
+supabase

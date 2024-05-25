@@ -29,7 +29,7 @@ if __name__ == '__main__':
     gemeni_app.start()
 
 @gemeni_app.task
-def get_prompt_response(prompt: str, client_id: str):
+def get_prompt_response(prompt: str, client_id: str, uml_type: str, original_prompt: str):
     model = genai.GenerativeModel('gemini-1.5-flash-latest')
     print(prompt)
     try:
@@ -38,7 +38,9 @@ def get_prompt_response(prompt: str, client_id: str):
 
         pubsub.publish(client_id, json.dumps({
             "text": santise_markdown_text(text),
-            "user": "gemini"
+            "user": "gemini-1.5-flash",
+            "uml_type": uml_type,
+            "original_prompt": original_prompt,
         }))
 
         return text

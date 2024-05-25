@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
 
 @claude_app.task
-def get_claude_response(prompt: str, client_id: str):
+def get_claude_response(prompt: str, client_id: str, uml_type: str, original_prompt: str):
     print(prompt)
     try:
         message = client.messages.create(
@@ -49,7 +49,9 @@ def get_claude_response(prompt: str, client_id: str):
         
         pubsub.publish(client_id, json.dumps({
             "text": santise_markdown_text(text),
-            "user": "claude"
+            "user": "claude-3-opus",
+            "uml_type": uml_type,
+            "original_prompt": original_prompt,
         }))
 
         return text

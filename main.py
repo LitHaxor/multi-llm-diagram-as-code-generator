@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import asyncio
 import json
+from supabase import create_client, Client
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from connection_manager import ConnectionManager
@@ -10,6 +11,7 @@ from workers.gemini_workers import get_prompt_response
 from workers.openai_workers import get_openai_response
 from utils.common import create_system_prompt, santise_markdown_text
 from RedisPubSub import RedisPubSubManager
+import os
 
 models = {
     "gemini": {
@@ -29,15 +31,41 @@ models = {
 app = FastAPI()
 manager = ConnectionManager()
 pubsub = RedisPubSubManager()
+
+url: str = os.environ.get("SUPABASE_URL")
+key: str = os.environ.get("SUPABASE_KEY")
+supabase: Client = create_client(url, key)
 # Routes
 @app.get("/", response_class=HTMLResponse)
 async def root():
     with open("index.html") as f:
         return HTMLResponse(content=f.read(), media_type="text/html")
     
-# @app.post("/send")
-# async def send_message(message: str):
-#     return get_openai_response(message)
+@app.post('/api/rating')
+async def rating(data: dict):
+    model_name = data.get('model_name')
+    text_data = data.get('text_data')
+    rating = data.get('rating')
+    client_id = data.get('client_id')
+    uml_type = data.get('uml_type')
+    original_prompt = data.get('original_prompt')
+
+    try:
+        supabase.table('ratings').insert([{
+            'model_name': model_name,
+            'text_data': text_data,
+            'rating': rating,
+            'client_id': client_id,
+            'uml_type': uml_type,
+            'user_prompt': original_prompt
+        }]).execute()
+
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+    
+
+
 
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
@@ -55,13 +83,13 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
             data = json.loads(text_data)
 
             uml_type = data["uml_type"]
-            text_data = data['text']
+            original_prompt = data['text']
             
-            text = create_system_prompt(text_data, uml_type)
+            prompt = create_system_prompt(original_prompt, uml_type)
 
             for model in models:
                 try:
-                    task = models[model]["function"].delay(text, client_id)
+                    task = models[model]["function"].delay(prompt, client_id, uml_type, original_prompt)
                     pubsub.redis.set(task.id, client_id)
                 except Exception as e:
                     print(f"Error: {str(e)}")
