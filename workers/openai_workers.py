@@ -3,6 +3,9 @@ from openai import OpenAI
 from dotenv import load_dotenv
 load_dotenv()
 import os
+import json 
+from RedisPubSub import RedisPubSubManager
+from utils.common import santise_markdown_text
 
 OPEN_AI_KEY = os.getenv('OPEN_AI_KEY')
 
@@ -21,11 +24,11 @@ openai_worker = Celery(
     broker_connection_retry_on_startup=True,
 )
 
+pubsub = RedisPubSubManager()
 
 @openai_worker.task
-def get_openai_response(prompt):
+def get_openai_response(prompt: str, client_id:str):
     try:
-        print(f"[OpenAI] get_openai_response: {prompt}")
         completion = openai.chat.completions.create(
             model='gpt-3.5-turbo',
             messages=[
@@ -34,6 +37,12 @@ def get_openai_response(prompt):
         )
         response = completion.to_dict()
         text = response['choices'][0]['message']['content']
+
+        pubsub.publish(client_id, json.dumps({
+            "text": santise_markdown_text(text),
+            "user": "openai"
+        }))
+        
         return text
     except Exception as e:
         return str(e)

@@ -1,9 +1,11 @@
-import google.generativeai as genai
-from celery import Celery
-import redis
+import json
+import os
 from dotenv import load_dotenv
 load_dotenv()
-import os
+import google.generativeai as genai
+from celery import Celery
+from RedisPubSub import RedisPubSubManager
+from utils.common import santise_markdown_text
 
 GEMENI_API_KEY = os.getenv('GOOGLE_AI_API_KEY')
 
@@ -20,22 +22,28 @@ gemeni_app = Celery(
     broker_connection_retry_on_startup=True
 )
 
-redis_client = redis.Redis(host='localhost', port=6379, db=0)
-
+pubsub = RedisPubSubManager()
 
 
 if __name__ == '__main__':
     gemeni_app.start()
 
 @gemeni_app.task
-def get_prompt_response(prompt: str):
+def get_prompt_response(prompt: str, client_id: str):
     model = genai.GenerativeModel('gemini-1.5-flash-latest')
     print(prompt)
     try:
         response = model.generate_content(prompt)
         text = response.text
+
+        pubsub.publish(client_id, json.dumps({
+            "text": santise_markdown_text(text),
+            "user": "gemini"
+        }))
+
         return text
     except AttributeError:
         return "No response text available"
     except Exception as e:
         return f'{type(e).__name__}: {e}'
+    

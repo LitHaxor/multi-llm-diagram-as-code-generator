@@ -9,26 +9,26 @@ from workers.claude_workers import get_claude_response
 from workers.gemini_workers import get_prompt_response
 from workers.openai_workers import get_openai_response
 from utils.common import create_system_prompt, santise_markdown_text
-
+from RedisPubSub import RedisPubSubManager
 
 models = {
     "gemini": {
         "function": get_prompt_response,
         "name": 'gemini'
     },
-    # "claude": {
-    #     "function": get_claude_response,
-    #     "name": 'claude'
-    # },
-    # 'openai': {
-    #     'function': get_openai_response,
-    #     'name': 'openai'
-    # }
+    "claude": {
+        "function": get_claude_response,
+        "name": 'claude'
+    },
+    'openai': {
+        'function': get_openai_response,
+        'name': 'openai'
+    }
 }
 
 app = FastAPI()
 manager = ConnectionManager()
-
+pubsub = RedisPubSubManager()
 # Routes
 @app.get("/", response_class=HTMLResponse)
 async def root():
@@ -39,9 +39,16 @@ async def root():
 # async def send_message(message: str):
 #     return get_openai_response(message)
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
+@app.websocket("/ws/{client_id}")
+async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    await manager.connect(websocket, client_id)
+    pubsub.subscribe(client_id)
+
+    async def send_message(message):
+        await manager.send_message(message, client_id)
+    
+    asyncio.create_task(pubsub.listen(send_message))
+
     try:
         while True:
             text_data = await websocket.receive_text()
@@ -54,24 +61,16 @@ async def websocket_endpoint(websocket: WebSocket):
 
             for model in models:
                 try:
-                    task = models[model]["function"].delay(text, websocket, manager)
-
-                    while not task.ready():
-                        await asyncio.sleep(1)
-                    result = task.result
-
-                    message = {
-                        "text": santise_markdown_text(result),
-                        "user": models[model]["name"],
-                    }
-
-                    manager.send_message(json.dumps(message), websocket)
+                    task = models[model]["function"].delay(text, client_id)
+                    pubsub.redis.set(task.id, client_id)
                 except Exception as e:
                     print(f"Error: {str(e)}")
-        
+    
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+        pubsub.unsubscribe(client_id)
     except Exception as e:
         error_message = json.dumps({"text": f"Error: {str(e)}", "user": "system"})
         await manager.send_message(error_message, websocket)
+        pubsub.unsubscribe(client_id)
         manager.disconnect(websocket)

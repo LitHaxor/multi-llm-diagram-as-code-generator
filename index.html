@@ -14,25 +14,20 @@
           100vh - 170px
         ); /* Adjust based on your footer and header height */
       }
-
       .message-container {
         display: flex;
         justify-content: space-between;
       }
-
       .message-container.left .message {
         margin-right: auto;
       }
-
       .message-container.right .message {
         margin-left: auto;
       }
-
       .chat-application {
         margin: 20px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
       }
-
       .input-container {
         margin-bottom: 0; /* Remove the extra margin from the input */
       }
@@ -69,7 +64,6 @@
           Clear Chat
         </button>
       </div>
-
       <div id="chat-messages" class="px-4 py-3 overflow-y-auto">
         <!-- Messages will be added dynamically here -->
       </div>
@@ -93,7 +87,8 @@
       import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
       mermaid.initialize({ startOnLoad: true });
 
-      const ws = new WebSocket("ws://localhost:8000/ws");
+      const clientId = generateClientId(); // Generate or retrieve the client ID
+      const ws = new WebSocket(`ws://localhost:8000/ws/${clientId}`);
       const chatMessages = document.getElementById("chat-messages");
       const messageInput = document.getElementById("message-input");
       const sendButton = document.getElementById("send-button");
@@ -107,8 +102,8 @@
         const userName = data.user;
         const message = data.text;
 
-        const parrentDiv = document.createElement("div");
-        parrentDiv.classList.add(
+        const parentDiv = document.createElement("div");
+        parentDiv.classList.add(
           "message-container",
           "left",
           "px-3",
@@ -161,11 +156,11 @@
           starRatingDiv.appendChild(star);
         }
 
-        parrentDiv.appendChild(userNameP);
-        parrentDiv.appendChild(messageDiv);
-        parrentDiv.appendChild(starRatingDiv);
+        parentDiv.appendChild(userNameP);
+        parentDiv.appendChild(messageDiv);
+        parentDiv.appendChild(starRatingDiv);
 
-        chatMessages.appendChild(parrentDiv);
+        chatMessages.appendChild(parentDiv);
 
         // Initialize Mermaid diagrams within the new message
         mermaid.init(undefined, messageDiv);
@@ -189,7 +184,7 @@
 
       // Function to send rating via POST request
       function sendRating(user, message, rating) {
-        fetch("/ratting", {
+        fetch("/rating", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -252,6 +247,11 @@
         chatMessages.appendChild(messageElement);
         chatMessages.scrollTop = chatMessages.scrollHeight;
       };
+
+      function generateClientId() {
+        // Simple client ID generation (you can replace this with a more robust method)
+        return "client-" + Math.random().toString(36).substr(2, 9);
+      }
     </script>
   </body>
 </html>
