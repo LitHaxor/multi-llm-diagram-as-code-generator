@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid Chatbot</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        #chat-messages {
+            height: calc(100vh - 170px); /* Adjust based on your footer and header height */
+        }
+
+        .message-container {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .message-container.left .message {
+            margin-right: auto;
+        }
+
+        .message-container.right .message {
+            margin-left: auto;
+        }
+        
+        .chat-application {
+            margin: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-container {
+            margin-bottom: 0; /* Remove the extra margin from the input */
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="bg-white shadow-lg rounded-lg mx-auto md:w-auto max-w-full h-screen chat-application">
+        <div class="bg-gray-700 text-white px-4 py-3 flex flex-col md:flex-row items-center justify-between">
+            <div class="font-bold text-lg mb-2 md:mb-0 md:mr-4">UML Benchmark</div>
+            <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4">
+                <div>
+                    <select id="uml-select" class="px-3 py-2 bg-gray-800 text-white rounded-md">
+                        <option value="flowchart">Flow Chart</option>
+                        <option value="sequence">Sequence Diagram</option>
+                        <option value="class">Class Diagram</option>
+                        <option value="state">State Diagram</option>
+                        <option value="entity">Entity Relationship Diagram</option>
+                    </select>
+                </div>
+            </div>
+            <button id="clear-button" class="px-3 py-2 bg-blue-500 rounded-md mt-2 md:mt-0">Clear Chat</button>
+        </div>
+        
+        <div id="chat-messages" class="px-4 py-3 overflow-y-auto">
+            <!-- Messages will be added dynamically here -->
+        </div>
+        <div class="input-container px-4 py-3 flex items-center bg-gray-200">
+            <input type="text" id="message-input" class="border rounded py-2 px-3 flex-grow mr-2" placeholder="Type a message...">
+            <button id="send-button" class="bg-blue-500 text-white py-2 px-4 rounded">Send</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+
+        const ws = new WebSocket('ws://localhost:8000/ws');
+        const chatMessages = document.getElementById('chat-messages');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const clearButton = document.getElementById('clear-button');
+
+        sendButton.addEventListener('click', sendMessage);
+        clearButton.addEventListener('click', clearChat);
+
+        ws.onmessage = event => {
+            const data = JSON.parse(event.data);
+            const userName = data.user;
+            const message = data.text;
+
+            const parrentDiv = document.createElement('div');
+            parrentDiv.classList.add('message-container', 'left', 'px-3', 'py-2', 'rounded', 'mb-2', 'w-full', 'bg-blue-400', 'flex', 'flex-col');
+
+            const userNameP = document.createElement('p');
+            userNameP.classList.add('text-white', 'text-right', 'mb-1');
+            userNameP.textContent = userName;
+
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', 'text-white', 'text-left', 'bg-gray-200', 'w-full');
+            messageDiv.textContent = message;
+
+            parrentDiv.appendChild(userNameP);
+            parrentDiv.appendChild(messageDiv);
+
+            chatMessages.appendChild(parrentDiv);
+
+            // Initialize Mermaid diagrams within the new message
+            mermaid.init(undefined, messageDiv);
+
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        };
+
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (message) {
+                ws.send(JSON.stringify({
+                    text: message,
+                    uml_type: document.getElementById('uml-select')?.value ?? 'flowchart',
+                }));
+                const userMessage = document.createElement('div');
+                userMessage.classList.add('message-container', 'right', 'px-3', 'py-2', 'rounded', 'mb-2', 'w-full', 'bg-gray-200', 'text-left');
+
+                const userNameP = document.createElement('p');
+                userNameP.classList.add('text-right');
+                userNameP.textContent = 'You';
+
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message');
+                messageDiv.textContent = message;
+
+                userMessage.appendChild(userNameP);
+                userMessage.appendChild(messageDiv);
+
+                chatMessages.appendChild(userMessage);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                messageInput.value = '';
+            }
+        }
+
+        function clearChat() {
+            chatMessages.innerHTML = '';
+        }
+
+        ws.onclose = () => {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('px-3', 'py-2', 'rounded', 'mb-2');
+            messageElement.textContent = 'Connection closed';
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        };
+    </script>
+</body>
+</html>

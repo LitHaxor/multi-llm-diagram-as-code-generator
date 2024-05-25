@@ -1,0 +1,11 @@
+transformers
+celery
+fastapi
+jinja2
+websockets
+pydantic
+google-generativeai
+asyncio
+redis
+anthropic
+python-dotenv
