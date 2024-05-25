@@ -11,3 +11,4 @@ anthropic
 python-dotenv
 openai
 supabase
+starlette

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth Page</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .error {
+            color: red;
+            font-size: 0.875rem;
+        }
+        .tab {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            margin-right: 0.5rem;
+        }
+        .tab-active {
+            background-color: #3b82f6; /* Tailwind Blue 500 */
+            color: white;
+        }
+        .tab-inactive {
+            background-color: #e5e7eb; /* Tailwind Gray 200 */
+            color: #374151; /* Tailwind Gray 700 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full">
+        <div class="mb-6 flex justify-center">
+            <button id="loginTab" class="tab tab-active">Login</button>
+            <button id="registerTab" class="tab tab-inactive">Register</button>
+        </div>
+        <div id="loginFormContainer">
+            <form id="loginForm" class="space-y-6">
+                <div>
+                    <label for="loginEmail" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="loginEmail" name="loginEmail" class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" required>
+                    <div id="loginEmailError" class="error"></div>
+                </div>
+                <div>
+                    <label for="loginPassword" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="loginPassword" name="loginPassword" class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" required>
+                    <div id="loginPasswordError" class="error"></div>
+                </div>
+                <button type="submit" class="w-full bg-blue-500 text-white p-3 rounded-md hover:bg-blue-600">Login</button>
+            </form>
+        </div>
+        <div id="registrationFormContainer" class="hidden">
+            <form id="registrationForm" class="space-y-6">
+                <div>
+                    <label for="registerEmail" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="registerEmail" name="registerEmail" class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" required>
+                    <div id="registerEmailError" class="error"></div>
+                </div>
+                <div>
+                    <label for="organization" class="block text-sm font-medium text-gray-700">Organization</label>
+                    <input type="text" id="organization" name="organization" class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" required>
+                    <div id="organizationError" class="error"></div>
+                </div>
+                <div>
+                    <label for="experience" class="block text-sm font-medium text-gray-700">Experience Level</label>
+                    <select id="experience" name="experience" class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" required>
+                        <option value="">Select your experience level</option>
+                        <option value="beginner">Beginner</option>
+                        <option value="intermediate">Intermediate</option>
+                        <option value="advanced">Advanced</option>
+                    </select>
+                    <div id="experienceError" class="error"></div>
+                </div>
+                <div>
+                    <label for="registerPassword" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="registerPassword" name="registerPassword" class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" required>
+                    <div id="registerPasswordError" class="error"></div>
+                </div>
+                <div>
+                    <label for="confirmPassword" class="block text-sm font-medium text-gray-700">Confirm Password</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" required>
+                    <div id="confirmPasswordError" class="error"></div>
+                </div>
+                <button type="submit" class="w-full bg-blue-500 text-white p-3 rounded-md hover:bg-blue-600">Register</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const loginTab = document.getElementById('loginTab');
+        const registerTab = document.getElementById('registerTab');
+        const loginFormContainer = document.getElementById('loginFormContainer');
+        const registrationFormContainer = document.getElementById('registrationFormContainer');
+
+        loginTab.addEventListener('click', function () {
+            loginFormContainer.classList.remove('hidden');
+            registrationFormContainer.classList.add('hidden');
+            loginTab.classList.add('tab-active');
+            loginTab.classList.remove('tab-inactive');
+            registerTab.classList.remove('tab-active');
+            registerTab.classList.add('tab-inactive');
+        });
+
+        registerTab.addEventListener('click', function () {
+            loginFormContainer.classList.add('hidden');
+            registrationFormContainer.classList.remove('hidden');
+            registerTab.classList.add('tab-active');
+            registerTab.classList.remove('tab-inactive');
+            loginTab.classList.remove('tab-active');
+            loginTab.classList.add('tab-inactive');
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            
+            let hasError = false;
+
+            // Email validation
+            const email = document.getElementById('loginEmail').value;
+            const emailError = document.getElementById('loginEmailError');
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                emailError.textContent = 'Please enter a valid email address.';
+                hasError = true;
+            } else {
+                emailError.textContent = '';
+            }
+
+            // Password validation
+            const password = document.getElementById('loginPassword').value;
+            const passwordError = document.getElementById('loginPasswordError');
+
+            if (password.length < 6) {
+                passwordError.textContent = 'Password must be at least 6 characters long.';
+                hasError = true;
+            } else {
+                passwordError.textContent = '';
+            }
+
+            if (!hasError) {
+                fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email,
+                        password
+                    })
+                }).then(response => {
+                    if (response.ok) {
+                        window.location.href = '/';
+                    }
+                }).catch(error => {
+                    console.error('Error:', error);
+                });
+
+            }
+        });
+
+        document.getElementById('registrationForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            
+            let hasError = false;
+
+            // Email validation
+            const email = document.getElementById('registerEmail').value;
+            const emailError = document.getElementById('registerEmailError');
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                emailError.textContent = 'Please enter a valid email address.';
+                hasError = true;
+            } else {
+                emailError.textContent = '';
+            }
+
+            // Organization validation
+            const organization = document.getElementById('organization').value;
+            const organizationError = document.getElementById('organizationError');
+            if (organization.trim() === '') {
+                organizationError.textContent = 'Organization is required.';
+                hasError = true;
+            } else {
+                organizationError.textContent = '';
+            }
+
+            // Experience validation
+            const experience = document.getElementById('experience').value;
+            const experienceError = document.getElementById('experienceError');
+            if (experience === '') {
+                experienceError.textContent = 'Please select your experience level.';
+                hasError = true;
+            } else {
+                experienceError.textContent = '';
+            }
+
+            // Password validation
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const passwordError = document.getElementById('registerPasswordError');
+            const confirmPasswordError = document.getElementById('confirmPasswordError');
+
+            if (password.length < 6) {
+                passwordError.textContent = 'Password must be at least 6 characters long.';
+                hasError = true;
+            } else {
+                passwordError.textContent = '';
+            }
+
+            if (password !== confirmPassword) {
+                confirmPasswordError.textContent = 'Passwords do not match.';
+                hasError = true;
+            } else {
+                confirmPasswordError.textContent = '';
+            }
+
+            if (!hasError) {
+                fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email,
+                        organization,
+                        experience,
+                        password
+                    })
+                }).then(response => {
+                    if (response.ok) {
+                        window.location.href = '/';
+                    }
+                }).catch(error => {
+                    console.error('Error:', error);
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -10,9 +10,7 @@
     />
     <style>
       #chat-messages {
-        height: calc(
-          100vh - 170px
-        ); /* Adjust based on your footer and header height */
+        height: calc(100vh - 170px); /* Adjust based on your footer and header height */
       }
       .message-container {
         display: flex;
@@ -96,6 +94,11 @@
       const clearButton = document.getElementById("clear-button");
 
       sendButton.addEventListener("click", sendMessage);
+      messageInput.addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+          sendMessage();
+        }
+      });
       clearButton.addEventListener("click", clearChat);
 
       ws.onmessage = (event) => {
@@ -188,10 +191,22 @@
 
       // Function to send rating via POST request
       function sendRating(user, message, rating, model_name, uml_type, original_prompt) {
+        // get access_token from cookie
+        const access_token = document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("access_token"))
+          .split("=")[1];
+        const refreshToken = document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("refresh_token"))
+          .split("=")[1];
+
+        const cookie = `access_token=${access_token}; refresh_token=${refreshToken}`;
         fetch('/api/rating', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Cookie': cookie,
           },
           body: JSON.stringify({
             model_name,
@@ -200,7 +215,7 @@
             client_id: clientId,
             uml_type,
             original_prompt,
-          })
+          }),
         }).then((response) => {
           if (response.ok) {
             console.log('Rating sent successfully');
