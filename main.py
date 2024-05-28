@@ -1,10 +1,13 @@
+from RedisPubSub import RedisPubSubManager
+from utils.common import create_system_prompt
+from utils.placeholders import uml_examples
 from dotenv import load_dotenv
 load_dotenv()
 import os
 import asyncio
 import json
 from supabase import create_client, Client
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Request, HTTPException, Response
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, Response
 from fastapi.responses import RedirectResponse
 from fastapi.responses import HTMLResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -13,8 +16,6 @@ from connection_manager import ConnectionManager
 from workers.claude_workers import get_claude_response
 from workers.gemini_workers import get_prompt_response
 from workers.openai_workers import get_openai_response
-from utils.common import create_system_prompt, santise_markdown_text
-from RedisPubSub import RedisPubSubManager
 
 models = {
     "gemini": {
@@ -48,7 +49,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
             token = request.cookies.get("access_token")
             refresh_token = request.cookies.get("refresh_token")
             if token and refresh_token:
-                supabase.auth.set_session(access_token=token, refresh_token=refresh_token)
+                try:
+                    supabase.auth.set_session(access_token=token, refresh_token=refresh_token)
+                except Exception as e:
+                    # Handle the exception by logging it or any other method you prefer
+                    print(f"Failed to set session: {e}")
+                    return RedirectResponse(url="/auth")
             else:
                 return RedirectResponse(url="/auth")
         response = await call_next(request)
@@ -58,17 +64,24 @@ class AuthMiddleware(BaseHTTPMiddleware):
 app.add_middleware(AuthMiddleware)
 # Routes
 @app.get("/", response_class=HTMLResponse)
-async def root(request: Request):
-    with open("index.html") as f:
+async def root():
+    """Serve the index.html file"""
+    with open("index.html", encoding='utf-8') as f:
         return HTMLResponse(content=f.read(), media_type="text/html")
 
 @app.get("/auth", response_class=HTMLResponse)
-async def auth(request: Request):
-    with open("auth.html") as f:
+async def auth():
+    """Serve the auth.html file"""
+    with open("auth.html", encoding='utf-8') as f:
         return HTMLResponse(content=f.read(), media_type="text/html")
-
+    
+@app.get("/api/placeholders")
+async def get_placeholders(uml_type: str):
+    """Get the UML examples for each UML type"""
+    return uml_examples[uml_type]
 @app.post('/api/login')
 async def login(data: dict, response: Response):
+    """Login route for users to sign in with email and password"""
     email = data.get('email')
     password = data.get('password')
 
@@ -93,7 +106,7 @@ async def login(data: dict, response: Response):
             response.set_cookie(key="refresh_token", value=refresh_token, httponly=True)
 
         return result
-    except Exception as e:
+    except ValueError as e:
         return {"status": "error", "message": str(e)}
 
 @app.post('/api/register')
@@ -137,7 +150,7 @@ async def logout(response: Response):
 
 
 @app.post('/api/rating')
-async def rating(data: dict, request: Request):
+async def rating(data: dict):
     model_name = data.get('model_name')
     text_data = data.get('text_data')
     rating = data.get('rating')
@@ -172,30 +185,18 @@ def get_current_user_token(request: Request):
 
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    """Websocket endpoint for handling communication between the client and server"""
     await manager.connect(websocket, client_id)
     pubsub.subscribe(client_id)
 
+
     async def send_message(message):
         try:
+            print(f"Sending message: {message}")
             await manager.send_message(message, client_id)
-        except Exception as e:
+        except ValueError as e:
             print(f"Initial send_message error: {str(e)}")
-            # Retry mechanism
-            for attempt in range(2):
-                try:
-                    manager.disconnect(client_id)
-                    await manager.connect(websocket, client_id)
-                    pubsub.subscribe(client_id)
-                    await manager.send_message(message, client_id)
-                    print("Message sent successfully on retry")
-                    return  # Exit if the message is sent successfully
-                except Exception as retry_e:
-                    await asyncio.sleep(1)
-                    print(f"Retry {attempt + 1} error: {str(retry_e)}")
-            else:
-                print("Retry limit exceeded")
-                manager.disconnect(client_id)
-                pubsub.unsubscribe(client_id)
+            await manager.send_message(f"Error: {str(e)}", client_id)
 
     asyncio.create_task(pubsub.listen(send_message))
 

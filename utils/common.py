@@ -1,6 +1,7 @@
 import re
 
-def create_system_prompt(sys, uml_type):
+def create_system_prompt(user_prompt, uml_type):
+    """create system prompt based on the UML type"""
     sys_inst = generate_promot_by_UML_type(uml_type)
     return f"""
     <system> 
@@ -9,7 +10,7 @@ def create_system_prompt(sys, uml_type):
 
     <user>
         <inst>
-        {sys}
+        {user_prompt}
         </inst>
     </user>
     """

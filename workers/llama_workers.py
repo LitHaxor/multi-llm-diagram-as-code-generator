@@ -24,7 +24,9 @@ llama_app = Celery(
     broker='redis://localhost:6379/3',
     backend='redis://localhost:6379/3',
     include=['workers.llama_workers'],
-    broker_connection_retry_on_startup=True
+    broker_connection_retry_on_startup=True,
+    
+
 )
 
 

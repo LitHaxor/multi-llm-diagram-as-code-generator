@@ -1,278 +1,335 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mermaid Chatbot</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
-      rel="stylesheet"
-    />
-    <style>
-      #chat-messages {
-        height: calc(100vh - 170px); /* Adjust based on your footer and header height */
-      }
-      .message-container {
-        display: flex;
-        justify-content: space-between;
-      }
-      .message-container.left .message {
-        margin-right: auto;
-      }
-      .message-container.right .message {
-        margin-left: auto;
-      }
-      .chat-application {
-        margin: 20px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-      }
-      .input-container {
-        margin-bottom: 0; /* Remove the extra margin from the input */
-      }
-    </style>
-  </head>
-  <body class="bg-gray-100">
-    <div
-      class="bg-white shadow-lg rounded-lg mx-auto md:w-auto max-w-full h-screen chat-application"
-    >
-      <div
-        class="bg-gray-700 text-white px-4 py-3 flex flex-col md:flex-row items-center justify-between"
-      >
-        <div class="font-bold text-lg mb-2 md:mb-0 md:mr-4">UML Benchmark</div>
-        <div
-          class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4"
-        >
-          <div>
-            <select
-              id="uml-select"
-              class="px-3 py-2 bg-gray-800 text-white rounded-md"
-            >
-              <option value="flowchart">Flow Chart</option>
-              <option value="sequence">Sequence Diagram</option>
-              <option value="class">Class Diagram</option>
-              <option value="state">State Diagram</option>
-              <option value="er">Entity Relationship Diagram</option>
-            </select>
-          </div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mermaid Chatbot</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <style>
+    #chat-messages {
+      height: calc(100vh - 320px); /* Adjust based on your footer, header height, and placeholder cards */
+      overflow-y: auto;
+    }
+    .message-container {
+      display: flex;
+      justify-content: space-between;
+    }
+    .message-container.left .message {
+      margin-right: auto;
+    }
+    .message-container.right .message {
+      margin-left: auto;
+    }
+    .chat-application {
+      margin: 20px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    .input-container {
+      margin-bottom: 0; /* Remove the extra margin from the input */
+    }
+    .card-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+    .placeholder-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px;
+      margin: 5px;
+      background-color: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .placeholder-card:hover {
+      background-color: #e5e7eb;
+    }
+    .placeholder-card .icon {
+      margin-right: 10px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div class="bg-white shadow-lg rounded-lg mx-auto md:w-auto max-w-full h-screen chat-application">
+    <div class="bg-gray-700 text-white px-4 py-3 flex flex-col md:flex-row items-center justify-between">
+      <div class="font-bold text-lg mb-2 md:mb-0 md:mr-4">UML Benchmark</div>
+      <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4">
+        <div>
+          <select id="uml-select" class="px-3 py-2 bg-gray-800 text-white rounded-md">
+            <option value="flowchart">Flow Chart</option>
+            <option value="sequence">Sequence Diagram</option>
+            <option value="class">Class Diagram</option>
+            <option value="state">State Diagram</option>
+            <option value="er">Entity Relationship Diagram</option>
+          </select>
         </div>
-        <button
-          id="clear-button"
-          class="px-3 py-2 bg-blue-500 rounded-md mt-2 md:mt-0"
-        >
-          Clear Chat
-        </button>
       </div>
-      <div id="chat-messages" class="px-4 py-3 overflow-y-auto">
-        <!-- Messages will be added dynamically here -->
-      </div>
-      <div class="input-container px-4 py-3 flex items-center bg-gray-200">
-        <input
-          type="text"
-          id="message-input"
-          class="border rounded py-2 px-3 flex-grow mr-2"
-          placeholder="Type a message..."
-        />
-        <button
-          id="send-button"
-          class="bg-blue-500 text-white py-2 px-4 rounded"
-        >
-          Send
-        </button>
-      </div>
+      <button id="clear-button" class="px-3 py-2 bg-blue-500 rounded-md mt-2 md:mt-0">Clear Chat</button>
     </div>
+    <div id="chat-messages" class="px-4 py-3">
+      <!-- Messages will be added dynamically here -->
+    </div>
+    <div class="input-container px-4 py-3 flex items-center bg-gray-200">
+      <input type="text" id="message-input" class="border rounded py-2 px-3 flex-grow mr-2" placeholder="Type a message..." />
+      <button id="send-button" class="bg-blue-500 text-white py-2 px-4 rounded">Send</button>
+    </div>
+    <div id="placeholders" class="px-4 py-3 bg-gray-200">
+      <!-- Placeholder cards will be added dynamically here -->
+    </div>
+  </div>
 
-    <script type="module">
-      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
 
-      mermaid.initialize({ startOnLoad: true });
-      const currentUrl = new URL(window.location.href);
-      const clientId = generateClientId(); // Generate or retrieve the client ID
-      const websocketUrl = `${currentUrl.protocol === "https:" ? "wss" : "ws"}://${
-        currentUrl.host
-      }/ws/${clientId}`;
-      const ws = new WebSocket(websocketUrl);
-      const chatMessages = document.getElementById("chat-messages");
-      const messageInput = document.getElementById("message-input");
-      const sendButton = document.getElementById("send-button");
-      const clearButton = document.getElementById("clear-button");
+    mermaid.initialize({ startOnLoad: true });
+    const currentUrl = new URL(window.location.href);
+    const clientId = generateClientId(); // Generate or retrieve the client ID
+    const websocketUrl = `${currentUrl.protocol === "https:" ? "wss" : "ws"}://${currentUrl.host}/ws/${clientId}`;
+    const ws = new WebSocket(websocketUrl);
+    const chatMessages = document.getElementById("chat-messages");
+    const messageInput = document.getElementById("message-input");
+    const sendButton = document.getElementById("send-button");
+    const clearButton = document.getElementById("clear-button");
+    const placeholders = document.getElementById("placeholders");
+    placeholders.classList.add("card-container");
 
-      sendButton.addEventListener("click", sendMessage);
-      messageInput.addEventListener("keypress", function(event) {
-        if (event.key === "Enter") {
-          sendMessage();
+    async function fetchPlaceholderData(umlType) {
+      try {
+        const response = await fetch(`/api/placeholders?uml_type=${umlType}`);
+        if (response.ok) {
+          const data = await response.json();
+          return data;
+        } else {
+          console.error("Failed to fetch placeholder data");
+          return [];
+        }
+      } catch (error) {
+        console.error("Error fetching placeholder data:", error);
+        return [];
+      }
+    }
+
+    function createPlaceholderCard(text, iconClass) {
+      const card = document.createElement("div");
+      card.classList.add('flex', 'items-center', 'bg-white', 'rounded-md', 'shadow-md', 'text-gray-700', 'm-2', 'p-4', 'cursor-pointer', 'transition', 'duration-300', 'hover:bg-blue-500', 'hover:text-white', 'hover:shadow-lg', 'text-sm', 'font-medium', 'transition', 'ease-in-out', 'delay-150');
+
+      const icon = document.createElement("i");
+      icon.classList.add("icon", "mr-2", iconClass);
+      icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-chat-square-quote-fill" viewBox="0 0 32 32">
+        <path d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.5a1 1 0 0 0-.8.4l-1.9 2.533a1 1 0 0 1-1.6 0L5.3 12.4a1 1 0 0 0-.8-.4H2a2 2 0 0 1-2-2zm7.194 2.766a1.7 1.7 0 0 0-.227-.272 1.5 1.5 0 0 0-.469-.324l-.008-.004A1.8 1.8 0 0 0 5.734 4C4.776 4 4 4.746 4 5.667c0 .92.776 1.666 1.734 1.666.343 0 .662-.095.931-.26-.137.389-.39.804-.81 1.22a.405.405 0 0 0 .011.59c.173.16.447.155.614-.01 1.334-1.329 1.37-2.758.941-3.706a2.5 2.5 0 0 0-.227-.4zM11 7.073c-.136.389-.39.804-.81 1.22a.405.405 0 0 0 .012.59c.172.16.446.155.613-.01 1.334-1.329 1.37-2.758.942-3.706a2.5 2.5 0 0 0-.228-.4 1.7 1.7 0 0 0-.227-.273 1.5 1.5 0 0 0-.469-.324l-.008-.004A1.8 1.8 0 0 0 10.07 4c-.957 0-1.734.746-1.734 1.667 0 .92.777 1.666 1.734 1.666.343 0 .662-.095.931-.26z"/>
+      </svg>`;
+
+      const cardText = document.createElement("span");
+      cardText.textContent = text;
+
+      card.appendChild(icon);
+      card.appendChild(cardText);
+
+      card.addEventListener("click", () => {
+        messageInput.value = text;
+      });
+
+      return card;
+    }
+
+    async function populatePlaceholders(umlType) {
+      placeholders.innerHTML = "";
+      const data = await fetchPlaceholderData(umlType);
+      data.forEach((text) => {
+        console.log(text);
+        const card = createPlaceholderCard(text, "insert_chart");
+        placeholders.appendChild(card);
+      });
+    }
+
+    document.getElementById("uml-select").addEventListener("change", (event) => {
+      const umlType = event.target.value;
+      populatePlaceholders(umlType);
+    });
+
+    sendButton.addEventListener("click", sendMessage);
+    messageInput.addEventListener("keypress", function(event) {
+      if (event.key === "Enter") {
+        sendMessage();
+      }
+    });
+    clearButton.addEventListener("click", clearChat);
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      const userName = data.user;
+      const message = data.text;
+      const original_prompt = data.original_prompt;
+      const uml_type = data.uml_type;
+      const model_name = userName;
+
+      const parentDiv = document.createElement("div");
+      parentDiv.classList.add(
+        "message-container",
+        "left",
+        "px-3",
+        "py-2",
+        "rounded",
+        "mb-2",
+        "w-full",
+        "bg-blue-400",
+        "flex",
+        "flex-col"
+      );
+
+      const userNameP = document.createElement("p");
+      userNameP.classList.add("text-white", "text-right", "mb-1");
+      userNameP.textContent = userName;
+
+      const messageDiv = document.createElement("div");
+      messageDiv.classList.add(
+        "message",
+        "text-white",
+        "text-left",
+        "bg-gray-200",
+        "w-full"
+      );
+      messageDiv.textContent = message;
+
+      // Create star rating div
+      const starRatingDiv = document.createElement("div");
+      starRatingDiv.classList.add(
+        "star-rating",
+        "flex",
+        "justify-end",
+        "mt-2"
+      );
+
+      // Create stars
+      for (let i = 1; i <= 5; i++) {
+        const star = document.createElement("span");
+        star.classList.add("star", "text-white", "cursor-pointer", 'text-xl',"hover:text-yellow-500");
+        star.textContent = "★";
+        star.dataset.rating = i;
+
+        // Add click event to each star
+        star.addEventListener("click", () => {
+          const rating = parseInt(star.dataset.rating);
+          highlightStars(starRatingDiv, rating);
+          sendRating(userName, message, rating, model_name, uml_type, original_prompt);
+        });
+
+        starRatingDiv.appendChild(star);
+      }
+
+      parentDiv.appendChild(userNameP);
+      parentDiv.appendChild(messageDiv);
+      parentDiv.appendChild(starRatingDiv);
+
+      chatMessages.appendChild(parentDiv);
+
+      // Initialize Mermaid diagrams within the new message
+      mermaid.init(undefined, messageDiv);
+
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    };
+
+    // Function to highlight stars based on rating
+    function highlightStars(starRatingDiv, rating) {
+      const stars = starRatingDiv.querySelectorAll(".star");
+      stars.forEach((star) => {
+        if (parseInt(star.dataset.rating) <= rating) {
+          star.classList.add("text-yellow-500");
+          star.classList.remove("text-gray-400");
+        } else {
+          star.classList.add("text-gray-400");
+          star.classList.remove("text-yellow-500");
         }
       });
-      clearButton.addEventListener("click", clearChat);
+    }
 
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        const userName = data.user;
-        const message = data.text;
-        const original_prompt = data.original_prompt;
-        const uml_type = data.uml_type;
-        const model_name = userName;
+    // Function to send rating via POST request
+    function sendRating(user, message, rating, model_name, uml_type, original_prompt) {
+      // get access_token from cookie
+      fetch('/api/rating', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model_name,
+          text_data: message, 
+          rating: rating,
+          client_id: clientId,
+          uml_type,
+          original_prompt,
+        }),
+      }).then((response) => {
+        if (response.ok) {
+          console.log('Rating sent successfully');
+        } else {
+          console.error('Failed to send rating');
+        }
+      });
+    }
 
-        const parentDiv = document.createElement("div");
-        parentDiv.classList.add(
+    function sendMessage() {
+      const message = messageInput.value.trim();
+      if (message) {
+        ws.send(
+          JSON.stringify({
+            text: message,
+            uml_type:
+              document.getElementById("uml-select")?.value ?? "flowchart",
+          })
+        );
+        const userMessage = document.createElement("div");
+        userMessage.classList.add(
           "message-container",
-          "left",
+          "right",
           "px-3",
           "py-2",
           "rounded",
           "mb-2",
           "w-full",
-          "bg-blue-400",
-          "flex",
-          "flex-col"
+          "bg-gray-200",
+          "text-left"
         );
 
         const userNameP = document.createElement("p");
-        userNameP.classList.add("text-white", "text-right", "mb-1");
-        userNameP.textContent = userName;
+        userNameP.classList.add("text-right", "mr-2");
+        userNameP.textContent = "You";
 
         const messageDiv = document.createElement("div");
-        messageDiv.classList.add(
-          "message",
-          "text-white",
-          "text-left",
-          "bg-gray-200",
-          "w-full"
-        );
+        messageDiv.classList.add("message");
         messageDiv.textContent = message;
 
-        // Create star rating div
-        const starRatingDiv = document.createElement("div");
-        starRatingDiv.classList.add(
-          "star-rating",
-          "flex",
-          "justify-end",
-          "mt-2"
-        );
+        userMessage.appendChild(userNameP);
+        userMessage.appendChild(messageDiv);
 
-        // Create stars
-        for (let i = 1; i <= 5; i++) {
-          const star = document.createElement("span");
-          star.classList.add("star", "text-white", "cursor-pointer", 'text-xl', "hover:text-yellow-500");
-          star.textContent = "★";
-          star.dataset.rating = i;
-
-          // Add click event to each star
-          star.addEventListener("click", () => {
-            const rating = parseInt(star.dataset.rating);
-            highlightStars(starRatingDiv, rating);
-            sendRating(userName, message, rating, model_name, uml_type, original_prompt);
-          });
-
-          starRatingDiv.appendChild(star);
-        }
-
-        parentDiv.appendChild(userNameP);
-        parentDiv.appendChild(messageDiv);
-        parentDiv.appendChild(starRatingDiv);
-
-        chatMessages.appendChild(parentDiv);
-
-        // Initialize Mermaid diagrams within the new message
-        mermaid.init(undefined, messageDiv);
-
+        chatMessages.appendChild(userMessage);
         chatMessages.scrollTop = chatMessages.scrollHeight;
-      };
-
-      // Function to highlight stars based on rating
-      function highlightStars(starRatingDiv, rating) {
-        const stars = starRatingDiv.querySelectorAll(".star");
-        stars.forEach((star) => {
-          if (parseInt(star.dataset.rating) <= rating) {
-            star.classList.add("text-yellow-500");
-            star.classList.remove("text-gray-400");
-          } else {
-            star.classList.add("text-gray-400");
-            star.classList.remove("text-yellow-500");
-          }
-        });
+        messageInput.value = "";
       }
+    }
 
-      // Function to send rating via POST request
-      function sendRating(user, message, rating, model_name, uml_type, original_prompt) {
-        // get access_token from cookie
-        fetch('/api/rating', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model_name,
-            text_data: message, 
-            rating: rating,
-            client_id: clientId,
-            uml_type,
-            original_prompt,
-          }),
-        }).then((response) => {
-          if (response.ok) {
-            console.log('Rating sent successfully');
-          } else {
-            console.error('Failed to send rating');
-          }
-        });
-      }
+    function clearChat() {
+      chatMessages.innerHTML = "";
+    }
 
-      function sendMessage() {
-        const message = messageInput.value.trim();
-        if (message) {
-          ws.send(
-            JSON.stringify({
-              text: message,
-              uml_type:
-                document.getElementById("uml-select")?.value ?? "flowchart",
-            })
-          );
-          const userMessage = document.createElement("div");
-          userMessage.classList.add(
-            "message-container",
-            "right",
-            "px-3",
-            "py-2",
-            "rounded",
-            "mb-2",
-            "w-full",
-            "bg-gray-200",
-            "text-left"
-          );
+    ws.onclose = () => {
+      const messageElement = document.createElement("div");
+      messageElement.classList.add("px-3", "py-2", "rounded", "mb-2");
+      messageElement.textContent = "Connection closed";
+      chatMessages.appendChild(messageElement);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    };
 
-          const userNameP = document.createElement("p");
-          userNameP.classList.add("text-right");
-          userNameP.textContent = "You";
+    function generateClientId() {
+      // Simple client ID generation (you can replace this with a more robust method)
+      return "client-" + Math.random().toString(36).substr(2, 9);
+    }
 
-          const messageDiv = document.createElement("div");
-          messageDiv.classList.add("message");
-          messageDiv.textContent = message;
-
-          userMessage.appendChild(userNameP);
-          userMessage.appendChild(messageDiv);
-
-          chatMessages.appendChild(userMessage);
-          chatMessages.scrollTop = chatMessages.scrollHeight;
-          messageInput.value = "";
-        }
-      }
-
-      function clearChat() {
-        chatMessages.innerHTML = "";
-      }
-
-      ws.onclose = () => {
-        const messageElement = document.createElement("div");
-        messageElement.classList.add("px-3", "py-2", "rounded", "mb-2");
-        messageElement.textContent = "Connection closed";
-        chatMessages.appendChild(messageElement);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-      };
-
-      function generateClientId() {
-        // Simple client ID generation (you can replace this with a more robust method)
-        return "client-" + Math.random().toString(36).substr(2, 9);
-      }
-    </script>
-  </body>
+    // Initial population of placeholders
+    populatePlaceholders(document.getElementById("uml-select").value);
+  </script>
+</body>
 </html>
