@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 load_dotenv()
+import os
 import asyncio
 import json
 from supabase import create_client, Client
@@ -14,7 +15,6 @@ from workers.gemini_workers import get_prompt_response
 from workers.openai_workers import get_openai_response
 from utils.common import create_system_prompt, santise_markdown_text
 from RedisPubSub import RedisPubSubManager
-import os
 
 models = {
     "gemini": {
@@ -30,8 +30,6 @@ models = {
         'name': 'openai'
     }
 }
-
-
 
 
 app = FastAPI()
@@ -63,7 +61,7 @@ app.add_middleware(AuthMiddleware)
 async def root(request: Request):
     with open("index.html") as f:
         return HTMLResponse(content=f.read(), media_type="text/html")
-    
+
 @app.get("/auth", response_class=HTMLResponse)
 async def auth(request: Request):
     with open("auth.html") as f:
@@ -73,12 +71,15 @@ async def auth(request: Request):
 async def login(data: dict, response: Response):
     email = data.get('email')
     password = data.get('password')
+
+    if not email or not password:
+        return {"status": "error", "message": "Email and password are required"}
     try:
         result = supabase.auth.sign_in_with_password(credentials={
             "email": email,
             "password": password
         })
-        
+
         session = result.model_dump().get('session')
         print(session)
         if session:
@@ -90,17 +91,19 @@ async def login(data: dict, response: Response):
             })
             response.set_cookie(key="access_token", value=access_token, httponly=True)
             response.set_cookie(key="refresh_token", value=refresh_token, httponly=True)
-            
+
         return result
     except Exception as e:
         return {"status": "error", "message": str(e)}
-    
+
 @app.post('/api/register')
 async def signup(data: dict, response: Response):
     email = data.get('email')
     password = data.get('password')
     organisation = data.get('organization')
     experience = data.get('experience')
+    if not email or not password:
+        return {"status": "error", "message": "Email and password are required"}
     try:
         result = supabase.auth.sign_up(credentials= {
             "email": email,
@@ -110,7 +113,8 @@ async def signup(data: dict, response: Response):
                     "organisation": organisation,
                     "experience": experience
                 }
-            }
+            },
+
         })
         session = result.model_dump().get('session')
 
@@ -123,7 +127,7 @@ async def signup(data: dict, response: Response):
     except Exception as e:
         print(f"Error: {str(e)}")
         return {"status": "error", "message": str(e)}
-    
+
 
 @app.get('/api/logout')
 async def logout(response: Response):
@@ -144,7 +148,7 @@ async def rating(data: dict, request: Request):
 
     if user is None:
         return {"status": "error", "message": "User not authenticated"}
-    
+
     user = user.model_dump()
     user_id = user.get('user').get('id')
     try:
@@ -159,7 +163,7 @@ async def rating(data: dict, request: Request):
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
-    
+
 def get_current_user_token(request: Request):
     token = request.cookies.get("access_token")
     if not token:
@@ -179,20 +183,20 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
             # Retry mechanism
             for attempt in range(2):
                 try:
-                    await manager.disconnect(websocket)
+                    manager.disconnect(client_id)
                     await manager.connect(websocket, client_id)
                     pubsub.subscribe(client_id)
                     await manager.send_message(message, client_id)
                     print("Message sent successfully on retry")
                     return  # Exit if the message is sent successfully
                 except Exception as retry_e:
-                    asyncio.sleep(1)
+                    await asyncio.sleep(1)
                     print(f"Retry {attempt + 1} error: {str(retry_e)}")
             else:
                 print("Retry limit exceeded")
-                await manager.disconnect(websocket)
+                manager.disconnect(client_id)
                 pubsub.unsubscribe(client_id)
-    
+
     asyncio.create_task(pubsub.listen(send_message))
 
     try:
@@ -202,7 +206,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
 
             uml_type = data["uml_type"]
             original_prompt = data['text']
-            
+
             prompt = create_system_prompt(original_prompt, uml_type)
 
             for model in models:
@@ -211,12 +215,12 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     pubsub.redis.set(task.id, client_id)
                 except Exception as e:
                     print(f"Error: {str(e)}")
-    
+
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        manager.disconnect(client_id)
         pubsub.unsubscribe(client_id)
     except Exception as e:
         error_message = json.dumps({"text": f"Error: {str(e)}", "user": "system"})
-        await manager.send_message(error_message, websocket)
+        await manager.send_message(error_message, client_id)
         pubsub.unsubscribe(client_id)
-        manager.disconnect(websocket)
+        manager.disconnect(client_id)
