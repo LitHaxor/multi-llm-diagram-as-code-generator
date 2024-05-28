@@ -85,9 +85,12 @@
       import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
 
       mermaid.initialize({ startOnLoad: true });
-
+      const currentUrl = new URL(window.location.href);
       const clientId = generateClientId(); // Generate or retrieve the client ID
-      const ws = new WebSocket(`ws://localhost:8000/ws/${clientId}`);
+      const websocketUrl = `${currentUrl.protocol === "https:" ? "wss" : "ws"}://${
+        currentUrl.host
+      }/ws/${clientId}`;
+      const ws = new WebSocket(websocketUrl);
       const chatMessages = document.getElementById("chat-messages");
       const messageInput = document.getElementById("message-input");
       const sendButton = document.getElementById("send-button");
@@ -149,7 +152,7 @@
         // Create stars
         for (let i = 1; i <= 5; i++) {
           const star = document.createElement("span");
-          star.classList.add("star", "text-gray-400", "cursor-pointer");
+          star.classList.add("star", "text-white", "cursor-pointer", 'text-xl', "hover:text-yellow-500");
           star.textContent = "★";
           star.dataset.rating = i;
 
@@ -192,21 +195,10 @@
       // Function to send rating via POST request
       function sendRating(user, message, rating, model_name, uml_type, original_prompt) {
         // get access_token from cookie
-        const access_token = document.cookie
-          .split("; ")
-          .find((row) => row.startsWith("access_token"))
-          .split("=")[1];
-        const refreshToken = document.cookie
-          .split("; ")
-          .find((row) => row.startsWith("refresh_token"))
-          .split("=")[1];
-
-        const cookie = `access_token=${access_token}; refresh_token=${refreshToken}`;
         fetch('/api/rating', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Cookie': cookie,
           },
           body: JSON.stringify({
             model_name,

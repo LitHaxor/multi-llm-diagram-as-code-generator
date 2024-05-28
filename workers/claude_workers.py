@@ -24,6 +24,8 @@ claude_app = Celery(
     broker_connection_retry_on_startup=True
 )
 
+model_name = 'claude-3-sonnet-20240229'
+
 pubsub = RedisPubSubManager()
 
 if __name__ == '__main__':
@@ -35,7 +37,7 @@ def get_claude_response(prompt: str, client_id: str, uml_type: str, original_pro
     print(prompt)
     try:
         message = client.messages.create(
-            model="claude-3-opus-20240229",
+            model=model_name,
             max_tokens=1024,
             messages=[
                 {"role": "user", "content": prompt}
@@ -49,7 +51,7 @@ def get_claude_response(prompt: str, client_id: str, uml_type: str, original_pro
         
         pubsub.publish(client_id, json.dumps({
             "text": santise_markdown_text(text),
-            "user": "claude-3-opus",
+            "user": model_name,
             "uml_type": uml_type,
             "original_prompt": original_prompt,
         }))

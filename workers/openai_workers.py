@@ -16,6 +16,8 @@ openai = OpenAI(
     api_key= OPEN_AI_KEY
 )
 
+model_name = 'gpt-4o'
+
 openai_worker = Celery(
     'openai_workers',
     broker='redis://localhost:6379/2',
@@ -30,7 +32,7 @@ pubsub = RedisPubSubManager()
 def get_openai_response(prompt: str, client_id:str, uml_type:str, original_prompt:str):
     try:
         completion = openai.chat.completions.create(
-            model='gpt-3.5-turbo',
+            model=model_name,
             messages=[
                 {'role': 'user', 'content': prompt}
             ]
@@ -41,7 +43,7 @@ def get_openai_response(prompt: str, client_id:str, uml_type:str, original_promp
 
         pubsub.publish(client_id, json.dumps({
             "text": santise_markdown_text(text),
-            "user": "gpt-3.5",
+            "user": model_name,
             "uml_type": uml_type,
             "original_prompt": original_prompt,
         }))

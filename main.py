@@ -61,7 +61,6 @@ app.add_middleware(AuthMiddleware)
 # Routes
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
-    # This part is simplified assuming authentication middleware is handling user authentication
     with open("index.html") as f:
         return HTMLResponse(content=f.read(), media_type="text/html")
     
@@ -100,23 +99,21 @@ async def login(data: dict, response: Response):
 async def signup(data: dict, response: Response):
     email = data.get('email')
     password = data.get('password')
-    organization = data.get('organization')
+    organisation = data.get('organization')
     experience = data.get('experience')
     try:
         result = supabase.auth.sign_up(credentials= {
             "email": email,
             "password": password,
-        })
-        user = result['user']
-        user_id = user['id']
-        supabase.table('user_experience').insert([
-            {
-                'user_id': user_id,
-                'organization': organization,
-                'experience': experience
+            "options": {
+                "data": {
+                    "organisation": organisation,
+                    "experience": experience
+                }
             }
-        ]).execute()
-        session = result.get('session')
+        })
+        session = result.model_dump().get('session')
+
         if session:
             access_token = session.get('access_token')
             refresh_token = session.get('refresh_token')
@@ -124,6 +121,7 @@ async def signup(data: dict, response: Response):
             response.set_cookie(key="refresh_token", value=refresh_token, httponly=True)
         return result
     except Exception as e:
+        print(f"Error: {str(e)}")
         return {"status": "error", "message": str(e)}
     
 
@@ -147,7 +145,8 @@ async def rating(data: dict, request: Request):
     if user is None:
         return {"status": "error", "message": "User not authenticated"}
     
-    user_id = user['id']
+    user = user.model_dump()
+    user_id = user.get('user').get('id')
     try:
         supabase.table('ratings').insert([{
             'model_name': model_name,
@@ -173,7 +172,26 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     pubsub.subscribe(client_id)
 
     async def send_message(message):
-        await manager.send_message(message, client_id)
+        try:
+            await manager.send_message(message, client_id)
+        except Exception as e:
+            print(f"Initial send_message error: {str(e)}")
+            # Retry mechanism
+            for attempt in range(2):
+                try:
+                    await manager.disconnect(websocket)
+                    await manager.connect(websocket, client_id)
+                    pubsub.subscribe(client_id)
+                    await manager.send_message(message, client_id)
+                    print("Message sent successfully on retry")
+                    return  # Exit if the message is sent successfully
+                except Exception as retry_e:
+                    asyncio.sleep(1)
+                    print(f"Retry {attempt + 1} error: {str(retry_e)}")
+            else:
+                print("Retry limit exceeded")
+                await manager.disconnect(websocket)
+                pubsub.unsubscribe(client_id)
     
     asyncio.create_task(pubsub.listen(send_message))
 
