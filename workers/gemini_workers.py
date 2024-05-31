@@ -6,6 +6,7 @@ import google.generativeai as genai
 from celery import Celery
 from RedisPubSub import RedisPubSubManager
 from utils.common import santise_markdown_text
+from Caching import RedisCache
 
 GEMENI_API_KEY = os.getenv('GOOGLE_AI_API_KEY')
 
@@ -26,6 +27,8 @@ pubsub = RedisPubSubManager()
 
 model_name = 'gemini-1.5-flash-latest'
 
+caching = RedisCache()
+
 if __name__ == '__main__':
     gemeni_app.start()
 
@@ -37,12 +40,16 @@ def get_prompt_response(prompt: str, client_id: str, uml_type: str, original_pro
         response = model.generate_content(prompt)
         text = response.text
 
-        pubsub.publish(client_id, json.dumps({
+        result = json.dumps({
             "text": santise_markdown_text(text),
             "user": model_name,
             "uml_type": uml_type,
             "original_prompt": original_prompt,
-        }))
+        })
+
+        pubsub.publish(client_id, result)
+        cache_key = f"{model_name}-{original_prompt}"
+        caching.set(cache_key,result)
 
         return text
     except AttributeError:

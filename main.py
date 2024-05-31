@@ -13,22 +13,22 @@ from fastapi.responses import HTMLResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware import Middleware
 from connection_manager import ConnectionManager
-from workers.claude_workers import get_claude_response
-from workers.gemini_workers import get_prompt_response
-from workers.openai_workers import get_openai_response
-
+from workers.claude_workers import get_claude_response, model_name as claude_model_name
+from workers.gemini_workers import get_prompt_response, model_name as gemini_model_name
+from workers.openai_workers import get_openai_response, model_name as openai_model_name
+from Caching import RedisCache
 models = {
     "gemini": {
         "function": get_prompt_response,
-        "name": 'gemini'
+        "name": gemini_model_name
     },
     "claude": {
         "function": get_claude_response,
-        "name": 'claude'
+        "name": claude_model_name
     },
     'openai': {
         'function': get_openai_response,
-        'name': 'openai'
+        'name': openai_model_name
     }
 }
 
@@ -36,6 +36,7 @@ models = {
 app = FastAPI()
 manager = ConnectionManager()
 pubsub = RedisPubSubManager()
+caching = RedisCache()
 
 url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_KEY")
@@ -51,6 +52,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             if token and refresh_token:
                 try:
                     supabase.auth.set_session(access_token=token, refresh_token=refresh_token)
+                    request.cookies['user_id'] = supabase.auth.get_user().model_dump().get('user').get('id')
                 except Exception as e:
                     # Handle the exception by logging it or any other method you prefer
                     print(f"Failed to set session: {e}")
@@ -74,6 +76,19 @@ async def auth():
     """Serve the auth.html file"""
     with open("auth.html", encoding='utf-8') as f:
         return HTMLResponse(content=f.read(), media_type="text/html")
+
+@app.get("/api/user/me")
+async def get_user():
+    """Get the current user"""
+    user = supabase.auth.get_user()
+    if user is None:
+        return {"status": "error", "message": "User not authenticated"}
+    user = user.model_dump()
+
+    return {
+        "id": user.get('user').get('id'),
+        "email": user.get('user').get('email'),
+    }
     
 @app.get("/api/placeholders")
 async def get_placeholders(uml_type: str):
@@ -192,7 +207,6 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
 
     async def send_message(message):
         try:
-            print(f"Sending message: {message}")
             await manager.send_message(message, client_id)
         except ValueError as e:
             print(f"Initial send_message error: {str(e)}")
@@ -212,8 +226,21 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
 
             for model in models:
                 try:
-                    task = models[model]["function"].delay(prompt, client_id, uml_type, original_prompt)
-                    pubsub.redis.set(task.id, client_id)
+                    cache_key = f"{models[model]['name']}-{original_prompt}"
+          
+                    response_cached = caching.get(cache_key)
+
+                    print({
+                        "cache_key": cache_key,
+                        "response_cached": response_cached
+                    })
+                    if response_cached:
+                        # response = json.loads(response_cached)
+                        # print(f"Response from cache: {response}")
+                        await manager.send_message(response_cached, client_id)
+                    else:
+                        task = models[model]["function"].delay(prompt, client_id,uml_type, original_prompt)
+                        pubsub.redis.set(task.id, client_id)
                 except Exception as e:
                     print(f"Error: {str(e)}")
 

@@ -6,6 +6,7 @@ import os
 import json 
 from RedisPubSub import RedisPubSubManager
 from utils.common import santise_markdown_text
+from Caching import RedisCache
 
 OPEN_AI_KEY = os.getenv('OPEN_AI_KEY')
 
@@ -27,6 +28,7 @@ openai_worker = Celery(
 )
 
 pubsub = RedisPubSubManager()
+caching = RedisCache()
 
 @openai_worker.task
 def get_openai_response(prompt: str, client_id:str, uml_type:str, original_prompt:str):
@@ -38,15 +40,20 @@ def get_openai_response(prompt: str, client_id:str, uml_type:str, original_promp
             ]
         )
         response = completion.to_dict()
-        print(response)
+
         text = response['choices'][0]['message']['content']
 
-        pubsub.publish(client_id, json.dumps({
+        result = json.dumps({
             "text": santise_markdown_text(text),
             "user": model_name,
             "uml_type": uml_type,
             "original_prompt": original_prompt,
-        }))
+        })
+
+
+        pubsub.publish(client_id,result)
+        cache_key = f"{model_name}-{original_prompt}"
+        caching.set(cache_key,result)
 
         return text
     except Exception as e:
