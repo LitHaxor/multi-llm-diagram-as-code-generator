@@ -12,3 +12,4 @@ python-dotenv
 openai
 supabase
 starlette
+gunicorn
