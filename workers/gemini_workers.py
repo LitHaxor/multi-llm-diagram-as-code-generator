@@ -23,8 +23,7 @@ gemeni_app = Celery(
     broker_connection_retry_on_startup=True
 )
 
-pubsub = RedisPubSubManager()
-
+RedisPubSubManager.initialize()
 model_name = 'gemini-1.5-flash-latest'
 
 caching = RedisCache()
@@ -47,7 +46,7 @@ def get_prompt_response(prompt: str, client_id: str, uml_type: str, original_pro
             "original_prompt": original_prompt,
         })
 
-        pubsub.publish(client_id, result)
+        RedisPubSubManager.publish(client_id, result)
         cache_key = f"{model_name}-{original_prompt}"
         caching.set(cache_key,result)
 

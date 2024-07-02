@@ -17,6 +17,9 @@ from workers.claude_workers import get_claude_response, model_name as claude_mod
 from workers.gemini_workers import get_prompt_response, model_name as gemini_model_name
 from workers.openai_workers import get_openai_response, model_name as openai_model_name
 from Caching import RedisCache
+RedisPubSubManager.initialize()
+
+
 models = {
     "gemini": {
         "function": get_prompt_response,
@@ -32,10 +35,10 @@ models = {
     }
 }
 
+RedisPubSubManager.initialize()
 
 app = FastAPI()
 manager = ConnectionManager()
-pubsub = RedisPubSubManager()
 caching = RedisCache()
 
 url: str = os.environ.get("SUPABASE_URL")
@@ -62,8 +65,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         return response
 
-
 app.add_middleware(AuthMiddleware)
+
 # Routes
 @app.get("/", response_class=HTMLResponse)
 async def root():
@@ -84,16 +87,16 @@ async def get_user():
     if user is None:
         return {"status": "error", "message": "User not authenticated"}
     user = user.model_dump()
-
     return {
         "id": user.get('user').get('id'),
         "email": user.get('user').get('email'),
     }
-    
+
 @app.get("/api/placeholders")
 async def get_placeholders(uml_type: str):
     """Get the UML examples for each UML type"""
     return uml_examples[uml_type]
+
 @app.post('/api/login')
 async def login(data: dict, response: Response):
     """Login route for users to sign in with email and password"""
@@ -109,7 +112,7 @@ async def login(data: dict, response: Response):
         })
 
         session = result.model_dump().get('session')
-        print(session)
+
         if session:
             access_token = session.get('access_token')
             refresh_token = session.get('refresh_token')
@@ -121,7 +124,8 @@ async def login(data: dict, response: Response):
             response.set_cookie(key="refresh_token", value=refresh_token, httponly=True)
 
         return result
-    except ValueError as e:
+    except Exception as e:
+        print(f"Error: {str(e)}")
         return {"status": "error", "message": str(e)}
 
 @app.post('/api/register')
@@ -133,7 +137,7 @@ async def signup(data: dict, response: Response):
     if not email or not password:
         return {"status": "error", "message": "Email and password are required"}
     try:
-        result = supabase.auth.sign_up(credentials= {
+        result = supabase.auth.sign_up(credentials={
             "email": email,
             "password": password,
             "options": {
@@ -142,7 +146,6 @@ async def signup(data: dict, response: Response):
                     "experience": experience
                 }
             },
-
         })
         session = result.model_dump().get('session')
 
@@ -156,13 +159,11 @@ async def signup(data: dict, response: Response):
         print(f"Error: {str(e)}")
         return {"status": "error", "message": str(e)}
 
-
 @app.get('/api/logout')
 async def logout(response: Response):
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
     return RedirectResponse(url="/auth")
-
 
 @app.post('/api/rating')
 async def rating(data: dict):
@@ -202,17 +203,16 @@ def get_current_user_token(request: Request):
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
     """Websocket endpoint for handling communication between the client and server"""
     await manager.connect(websocket, client_id)
-    pubsub.subscribe(client_id)
+    RedisPubSubManager.subscribe(client_id)
 
-
-    async def send_message(message):
+    async def send_message(channel, message):
         try:
             await manager.send_message(message, client_id)
         except ValueError as e:
             print(f"Initial send_message error: {str(e)}")
             await manager.send_message(f"Error: {str(e)}", client_id)
 
-    asyncio.create_task(pubsub.listen(send_message))
+    asyncio.create_task(RedisPubSubManager.listen(send_message))
 
     try:
         while True:
@@ -227,28 +227,25 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
             for model in models:
                 try:
                     cache_key = f"{models[model]['name']}-{original_prompt}"
-          
                     response_cached = caching.get(cache_key)
 
-                    print({
-                        "cache_key": cache_key,
-                        "response_cached": response_cached
-                    })
                     if response_cached:
-                        # response = json.loads(response_cached)
-                        # print(f"Response from cache: {response}")
                         await manager.send_message(response_cached, client_id)
                     else:
-                        task = models[model]["function"].delay(prompt, client_id,uml_type, original_prompt)
-                        pubsub.redis.set(task.id, client_id)
+                        task = models[model]["function"].delay(prompt, client_id, uml_type, original_prompt)
+                        RedisPubSubManager.redis.set(task.id, client_id)
                 except Exception as e:
                     print(f"Error: {str(e)}")
 
     except WebSocketDisconnect:
         manager.disconnect(client_id)
-        pubsub.unsubscribe(client_id)
+        RedisPubSubManager.unsubscribe(client_id)
     except Exception as e:
         error_message = json.dumps({"text": f"Error: {str(e)}", "user": "system"})
         await manager.send_message(error_message, client_id)
-        pubsub.unsubscribe(client_id)
+        RedisPubSubManager.unsubscribe(client_id)
         manager.disconnect(client_id)
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="localhost", port=8000)

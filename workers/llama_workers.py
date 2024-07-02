@@ -30,8 +30,7 @@ llama_app = Celery(
 )
 
 
-pubsub = RedisPubSubManager()
-
+RedisPubSubManager.initialize()
 
 if __name__ == '__main__':
     llama_app.start()
@@ -42,7 +41,7 @@ def get_llama_response(prompt: str, client_id: str, uml_type: str, original_prom
         response = pipe(prompt)
         text = response[0]['generated_text']
 
-        pubsub.publish(client_id, json.dumps({
+        RedisPubSubManager.publish(client_id, json.dumps({
             "text": santise_markdown_text(text),
             "user": "llama",
             "uml_type": uml_type,

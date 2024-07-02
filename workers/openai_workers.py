@@ -26,8 +26,7 @@ openai_worker = Celery(
     include=['workers.openai_workers'],
     broker_connection_retry_on_startup=True,
 )
-
-pubsub = RedisPubSubManager()
+RedisPubSubManager.initialize()
 caching = RedisCache()
 
 @openai_worker.task
@@ -50,8 +49,7 @@ def get_openai_response(prompt: str, client_id:str, uml_type:str, original_promp
             "original_prompt": original_prompt,
         })
 
-
-        pubsub.publish(client_id,result)
+        RedisPubSubManager.publish(client_id,result)
         cache_key = f"{model_name}-{original_prompt}"
         caching.set(cache_key,result)
 

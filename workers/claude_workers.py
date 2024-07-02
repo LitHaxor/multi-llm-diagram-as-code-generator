@@ -28,8 +28,8 @@ claude_app = Celery(
 
 model_name = 'claude-3-sonnet-20240229'
 
+RedisPubSubManager.initialize()
 caching = RedisCache()
-pubsub = RedisPubSubManager()
 
 if __name__ == '__main__':
     claude_app.start()
@@ -59,7 +59,7 @@ def get_claude_response(prompt: str, client_id: str, uml_type: str, original_pro
             "original_prompt": original_prompt,
         })
         
-        pubsub.publish(client_id, result)
+        RedisPubSubManager.publish(client_id, result)
         cache_key = f"{model_name}-{original_prompt}"
         caching.set(cache_key, result)
 
