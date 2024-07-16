@@ -16,7 +16,14 @@
       <div
         class="bg-black text-white p-4 flex flex-col md:flex-row items-center justify-between"
       >
-        <div class="font-bold text-lg mb-2 md:mb-0">UML Benchmark</div>
+        <div class="flex">
+          <h2 class="font-bold text-lg mb-2 md:mb-0">UML Benchmark</h2>
+          <div class="font-semibold text-md mx-2">
+            <a href="/about" class="text-blue-500">code2diagrams</a>
+          </div>
+        </div>
+
+       
         <div
           class="flex flex-row justify-between items-center space-y-2 md:space-y-0 md:space-x-4"
         >
@@ -358,6 +365,11 @@
             messageElement.textContent = "Connection closed";
             chatMessages.appendChild(messageElement);
             chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            // reconnect
+            setTimeout(()=> {
+              ws = new WebSocket(websocketUrl);
+            }, 1000);
           };
           populatePlaceholders(document.getElementById("uml-select").value);
         })

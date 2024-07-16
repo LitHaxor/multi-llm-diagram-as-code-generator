@@ -48,7 +48,7 @@ supabase: Client = create_client(url, key)
 # Middleware for handling authentication
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        ignore_paths = ["/auth", "/api/login", "/api/register"]
+        ignore_paths = ["/auth", "/api/login", "/api/register", '/about']
         if request.url.path not in ignore_paths:
             token = request.cookies.get("access_token")
             refresh_token = request.cookies.get("refresh_token")
@@ -78,6 +78,12 @@ async def root():
 async def auth():
     """Serve the auth.html file"""
     with open("auth.html", encoding='utf-8') as f:
+        return HTMLResponse(content=f.read(), media_type="text/html")
+
+@app.get("/about")
+async def about():
+    """Serve the about.html file"""
+    with open("about.html", encoding='utf-8') as f:
         return HTMLResponse(content=f.read(), media_type="text/html")
 
 @app.get("/api/user/me")
