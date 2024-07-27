@@ -48,7 +48,7 @@ supabase: Client = create_client(url, key)
 # Middleware for handling authentication
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        ignore_paths = ["/auth", "/api/login", "/api/register", '/about']
+        ignore_paths = ["/auth", "/api/login", "/api/register", '/about', '/api/auth/github']
         if request.url.path not in ignore_paths:
             token = request.cookies.get("access_token")
             refresh_token = request.cookies.get("refresh_token")
@@ -65,7 +65,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         return response
 
-app.add_middleware(AuthMiddleware)
+# app.add_middleware(AuthMiddleware)
 
 # Routes
 @app.get("/", response_class=HTMLResponse)
@@ -79,6 +79,18 @@ async def auth():
     """Serve the auth.html file"""
     with open("auth.html", encoding='utf-8') as f:
         return HTMLResponse(content=f.read(), media_type="text/html")
+    
+
+@app.get("/api/oauth/github")
+async def auth_github_supabase():
+    """Authenticate with GitHub using Supabase"""
+    data = supabase.auth.sign_in_with_oauth({
+        "provider": 'github',
+    })
+
+    print(data)
+    
+    return RedirectResponse(url=data.url)
 
 @app.get("/about")
 async def about():

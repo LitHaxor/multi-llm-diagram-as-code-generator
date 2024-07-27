@@ -3,7 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auth Page</title>
+    <title>
+        Code2Diagram - Ai Generated Diagram | Login or Register
+    </title>
+    <!-- SEO -->
+    <meta name="description" content="Code2Diagram is an AI-powered tool that automatically generates diagrams from your code.">
+    <meta name="keywords" content="code2diagram, code to diagram, code diagram, code visualization, code2flow, code to flowchart, code flowchart, code2uml, code to uml, code uml, code2graph, code to graph, code graph, code2chart, code to chart, code chart, code2flowchart, code to flowchart, code flowchart, code2sequence, code to sequence, code sequence">
+    <meta name="author" content="Code2Diagram">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <meta name="bingbot" content="index, follow">
+    <meta property="og:title" content="Code2Diagram - Ai Generated Diagram | Login or Register">
+    <meta property="og:description" content="Code2Diagram is an AI-powered tool that automatically generates diagrams from your code.">
+    <meta property="og:image" content="https://code2diagram.com/assets/images/code2diagram.png">
+    <meta property="og:url" content="https://code2diagram.com/auth">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Code2Diagram">
+    <meta property="og:locale" content="en_US">
+
+  
+    
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         .error {
@@ -46,6 +65,12 @@
                 </div>
                 <button type="submit" class="w-full bg-blue-500 text-white p-3 rounded-md hover:bg-blue-600">Login</button>
             </form>
+            <button 
+                class="w-full my-2 bg-black text-white p-3 rounded-md hover:bg-gray-600" 
+                onclick="githubLogin()"
+            >
+                Login with GitHub
+            </button>
         </div>
         <div id="registrationFormContainer" class="hidden">
             <form id="registrationForm" class="space-y-6">
@@ -81,9 +106,14 @@
                 </div>
                 <button type="submit" class="w-full bg-blue-500 text-white p-3 rounded-md hover:bg-blue-600">Register</button>
             </form>
+            <button 
+                class="w-full my-2 bg-black text-white p-3 rounded-md hover:bg-gray-600" 
+                onclick="githubLogin()"
+            >
+                Login with GitHub
+            </button>
         </div>
     </div>
-
     <script>
         const loginTab = document.getElementById('loginTab');
         const registerTab = document.getElementById('registerTab');
@@ -148,6 +178,12 @@
                 }).then(response => {
                     if (response.ok) {
                         window.location.href = '/';
+                    } else {
+                        response.json().then(data => {
+                            // Handle errors returned from the server
+                            emailError.textContent = data.emailError || '';
+                            passwordError.textContent = data.passwordError || '';
+                        });
                     }
                 }).catch(error => {
                     console.error('Error:', error);
@@ -227,14 +263,40 @@
                 }).then(response => {
                     if (response.ok) {
                         window.location.href = '/';
+                    } else {
+                        response.json().then(data => {
+                            // Handle errors returned from the server
+                            emailError.textContent = data.emailError || '';
+                            organizationError.textContent = data.organizationError || '';
+                            experienceError.textContent = data.experienceError || '';
+                            passwordError.textContent = data.passwordError || '';
+                            confirmPasswordError.textContent = data.confirmPasswordError || '';
+                        });
                     }
                 }).catch(error => {
                     console.error('Error:', error);
                 });
             }
         });
+
+        async function githubLogin() {
+            try {
+                const response = await fetch('/api/oauth/github', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    window.location.href = data.redirectUrl;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
     </script>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4610778026529643"
-    crossorigin="anonymous"></script>
+     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4610778026529643"
+     crossorigin="anonymous"></script>
 </body>
 </html>
